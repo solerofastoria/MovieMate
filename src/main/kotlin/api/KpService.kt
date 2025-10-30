@@ -53,4 +53,42 @@ class KpService(
             }
         }
     }
+
+    fun getMoviesByGenres(genres: List<String>): List<KpMovie?> {
+        if (genres.isEmpty()) return emptyList()
+
+        val result = mutableListOf<KpMovie>()
+
+        repeat(5) {
+            val genresParams = genres.joinToString("&") {
+                "genres.name=" + URLEncoder.encode(it, StandardCharsets.UTF_8.toString())
+            }
+            val url = "https://api.kinopoisk.dev/v1.4/movie/random?" +
+                    "year=1980-2025&" +
+                    "rating.kp=6-10&" +
+                    genresParams
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("accept", "application/json")
+                .addHeader("X-API-KEY", kpToken)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val body = response.body.string()
+                    if (body.isNotBlank()) {
+                        val movie = mapper.readValue(body, KpMovie::class.java)
+                        result.add(movie)
+                    } else {
+                        println("Пустое тело ответа")
+                    }
+                } else {
+                    println("Ошибка запроса [${response.code}]: ${response.message}")
+                }
+            }
+            Thread.sleep(200)
+        }
+
+        return result.distinctBy { it.id }
+    }
 }

@@ -4,30 +4,31 @@ import com.github.kotlintelegrambot.entities.InlineKeyboardMarkup
 import com.github.kotlintelegrambot.entities.KeyboardReplyMarkup
 import com.github.kotlintelegrambot.entities.keyboard.InlineKeyboardButton
 import com.github.kotlintelegrambot.entities.keyboard.KeyboardButton
+import org.example.api.dto.KpMovie
 import org.example.entity.User
 
 fun buildGenreKeyboard(user: User): InlineKeyboardMarkup {
     val genres = listOf(
-        "komediya" to "🎭 Комедия",
-        "uzhasy" to "😱 Ужасы",
-        "drama" to "💔 Драма",
-        "fantastika" to "🚀 Фантастика",
-        "boevik" to "🔫 Боевик",
-        "priklyucheniya" to "🏞️ Приключения",
-        "semeynyy" to "👪 Семейный",
-        "myuzikl" to "🎵 Мюзикл",
-        "melodrama" to "💘 Мелодрама",
-        "triller" to "🧠 Триллер",
-        "detektiv" to "🕵️ Детектив",
-        "detskiy" to "🧸 Детский",
-        "fentezi" to "⚔️ Фэнтези",
-        "biografiya" to "📖 Биография",
-        "dokumentalnyy" to "🎓 Документальный",
-        "sport" to "🎤 Спорт",
-        "kriminal" to "🎯 Криминал",
-        "voennyy" to "💣 Военный",
-        "multfilm" to "🌍 Мультфильм",
-        "anime" to "🧒 Аниме"
+        "комедия" to "🎭 Комедия",
+        "ужасы" to "😱 Ужасы",
+        "драма" to "💔 Драма",
+        "фантастика" to "🚀 Фантастика",
+        "боевик" to "🔫 Боевик",
+        "приключения" to "🏞️ Приключения",
+        "семейный" to "👪 Семейный",
+        "мюзикл" to "🎵 Мюзикл",
+        "мелодрама" to "💘 Мелодрама",
+        "триллер" to "🧠 Триллер",
+        "детектив" to "🕵️ Детектив",
+        "детский" to "🧸 Детский",
+        "фэнтези" to "⚔️ Фэнтези",
+        "биография" to "📖 Биография",
+        "документальный" to "🎓 Документальный",
+        "спорт" to "🎤 Спорт",
+        "криминал" to "🎯 Криминал",
+        "военный" to "💣 Военный",
+        "мультфильм" to "🌍 Мультфильм",
+        "аниме " to "🧒 Аниме"
     )
 
     val rows = genres.chunked(3).map { chunk ->
@@ -40,9 +41,11 @@ fun buildGenreKeyboard(user: User): InlineKeyboardMarkup {
         }
     }.toMutableList()
 
-    rows.add(listOf(
-        InlineKeyboardButton.CallbackData("✅ Готово", "genres_done")
-    ))
+    rows.add(
+        listOf(
+            InlineKeyboardButton.CallbackData("✅ Готово", "genres_done")
+        )
+    )
 
     return InlineKeyboardMarkup.create(*rows.toTypedArray())
 }
@@ -85,5 +88,30 @@ fun buildInlineKeyboard(movieTitle: String, mood: String): InlineKeyboardMarkup 
                 )
             )
         )
+    )
+}
+
+fun createTitle(movie: KpMovie?): String {
+    val genres = movie?.genres?.joinToString(", ") { it.name } ?: "—"
+    val description = listOf(movie?.description, movie?.shortDescription)
+        .firstOrNull { !it.isNullOrBlank() } ?: "Описание отсутствует."
+    val year = movie?.year?.toString() ?: "—"
+    val name = listOf(movie?.name, movie?.alternativeName)
+        .firstOrNull { !it.isNullOrBlank() } ?: "Без названия"
+    return "🎬 *$name* ($year)\n🎭 Жанры: $genres\n⭐ Кинопоиск: ${movie?.rating?.kp ?: "—"}\n$description"
+}
+
+fun createFavKeyboard(movies: List<KpMovie?>): InlineKeyboardMarkup {
+    val buttons = movies.map { movie ->
+        val title = listOf(movie?.name, movie?.alternativeName)
+            .firstOrNull { !it.isNullOrBlank() } ?: "Без названия"
+        InlineKeyboardButton.CallbackData(
+            text = "❤️ $title",
+            callbackData = "add_fav:$title"
+        )
+    }.chunked(2)
+
+    return InlineKeyboardMarkup.create(
+        buttons.map { row -> row.toList() }
     )
 }

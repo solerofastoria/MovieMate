@@ -8,12 +8,9 @@ import com.github.kotlintelegrambot.dispatcher.command
 import com.github.kotlintelegrambot.dispatcher.text
 import com.github.kotlintelegrambot.entities.ChatId
 import com.github.kotlintelegrambot.entities.InlineKeyboardMarkup
-import com.github.kotlintelegrambot.entities.KeyboardReplyMarkup
 import com.github.kotlintelegrambot.entities.ParseMode
 import com.github.kotlintelegrambot.entities.TelegramFile
-import com.github.kotlintelegrambot.entities.TelegramFile.ByFileId
 import com.github.kotlintelegrambot.entities.keyboard.InlineKeyboardButton
-import com.github.kotlintelegrambot.entities.keyboard.KeyboardButton
 import com.github.kotlintelegrambot.logging.LogLevel
 import jakarta.annotation.PostConstruct
 import org.example.api.KpService
@@ -36,6 +33,7 @@ class MovieMateBot(
     private val kpService: KpService,
     @Value("\${telegram.bot.token}") private val botToken: String
 ) {
+
 
     private lateinit var bot: Bot
 
@@ -67,9 +65,9 @@ class MovieMateBot(
                         chatId = ChatId.fromId(chatId),
                         text = "\uD83C\uDF89 Добро пожаловать, ${telegramUser.firstName}!\n" +
                                 "\n" +
-                                "Я - твой персональный киноконсультант! \uD83C\uDFAC\n" +
+                                "Я - ваш персональный киноконсультант! \uD83C\uDFAC\n" +
                                 "\n" +
-                                "Я ищу фильмы из множества источников чтобы найти именно то, что тебе понравится!\n" +
+                                "Я ищу фильмы из множества источников чтобы найти именно то, что вам понравится!\n" +
                                 "\n" +
                                 "\uD83D\uDCCB Выбери действие:",
                         replyMarkup = buildMainMenu()
@@ -103,7 +101,7 @@ class MovieMateBot(
                             val movieTitle = "Ещё один фильм для '$mood'"
                             bot.sendMessage(
                                 chatId = ChatId.fromId(chatId),
-                                text = "Я подобрал тебе: $movieTitle",
+                                text = "Я подобрал вам: $movieTitle",
                                 replyMarkup = buildInlineKeyboard(movieTitle, mood)
                             )
                         }
@@ -111,26 +109,26 @@ class MovieMateBot(
                         data.startsWith("toggle_genre:") -> {
                             val slug = data.removePrefix("toggle_genre:")
                             val genreName = when (slug) {
-                                "komediya" -> "Комедия"
-                                "uzhasy" -> "Ужасы"
-                                "drama" -> "Драма"
-                                "fantastika" -> "Фантастика"
-                                "boevik" -> "Боевик"
-                                "priklyucheniya" -> "Приключения"
-                                "semeynyy" -> "Семейный"
-                                "myuzikl" -> "Мюзикл"
-                                "melodrama" -> "Мелодрама"
-                                "thriller" -> "Триллер"
-                                "detektiv" -> "Детектив"
-                                "detskiy" -> "Детский"
-                                "fentezi" -> "Фэнтези"
-                                "biografiya" -> "Биография"
-                                "dokumentalnyy" -> "Документальный"
-                                "sport" -> "Спорт"
-                                "kriminal" -> "Криминал"
-                                "voennyy" -> "Военный"
-                                "multfilm" -> "Мультфильм"
-                                "anime" -> "Аниме"
+                                "комедия" -> "Комедия"
+                                "ужасы" -> "Ужасы"
+                                "драма" -> "Драма"
+                                "фантастика" -> "Фантастика"
+                                "боевик" -> "Боевик"
+                                "приключения" -> "Приключения"
+                                "семейный" -> "Семейный"
+                                "мюзикл" -> "Мюзикл"
+                                "мелодрама" -> "Мелодрама"
+                                "триллер" -> "Триллер"
+                                "детектив" -> "Детектив"
+                                "детский" -> "Детский"
+                                "фэнтези" -> "Фэнтези"
+                                "биография" -> "Биография"
+                                "документальный" -> "Документальный"
+                                "спорт" -> "Спорт"
+                                "криминал" -> "Криминал"
+                                "военный" -> "Военный"
+                                "мультфильм" -> "Мультфильм"
+                                "аниме" -> "Аниме"
                                 else -> slug
                             }
                             val existing = user.favoriteGenres.find { it.genreSlug == slug }
@@ -208,32 +206,20 @@ class MovieMateBot(
 
                             val moviesToShow = movies.take(3)
                             val messageText = moviesToShow.joinToString("\n\n") { movie ->
-                                val title = movie?.name ?: movie?.alternativeName ?: "Без названия"
-                                val year = movie?.year?.toString() ?: "—"
-                                val genres = movie?.genres?.joinToString(", ") { it.name } ?: "—"
-                                val description = listOf(movie?.description, movie?.shortDescription)
-                                    .firstOrNull { !it.isNullOrBlank() } ?: "Описание отсутствует."
-                                "🎬 *$title* ($year)\n🎭 Жанры: $genres\n$description"
+                                createTitle(movie)
                             }
 
-                            val buttons = moviesToShow.map { movie ->
-                                val title = listOf(movie?.name, movie?.alternativeName)
-                                    .firstOrNull { !it.isNullOrBlank() } ?: "Без названия"
-                                val year = movie?.year?.toString() ?: "—"
-                                InlineKeyboardButton.CallbackData(
-                                    text = "❤️ $title $year",
-                                    callbackData = "add_fav:$title"
-                                )
-                            }.chunked(2)
+                            val keyboard = createFavKeyboard(moviesToShow)
 
                             bot.sendMessage(
                                 chatId = ChatId.fromId(chatId),
                                 text = messageText,
                                 parseMode = ParseMode.MARKDOWN,
-                                replyMarkup = InlineKeyboardMarkup.create(*buttons.toTypedArray())
+                                replyMarkup = keyboard
                             )
                             return@text
                         }
+
                         text == "⚙️ Настройка предпочтений" -> {
                             val user = userRepository.findByTelegramId(telegramUser.id)
                                 ?: userRepository.save(
@@ -247,10 +233,63 @@ class MovieMateBot(
 
                             bot.sendMessage(
                                 chatId = ChatId.fromId(chatId),
-                                text = "Выбери любимые жанры 🎬\n(нажимай повторно, чтобы удалить из списка):",
+                                text = "Выберите любимые жанры 🎬\n(нажимай повторно, чтобы удалить из списка)" +
+                                        "\nПосле того как жанры будут выбраны, нажмите *Готово*",
                                 replyMarkup = buildGenreKeyboard(user)
                             )
                         }
+
+                        text == "🎨 Подборка фильмов по предпочтениям" -> {
+                            val user = userRepository.findByTelegramId(telegramUser.id)
+                                ?: userRepository.save(
+                                    User(
+                                        telegramId = telegramUser.id,
+                                        username = telegramUser.username,
+                                        firstName = telegramUser.firstName,
+                                        lastName = telegramUser.lastName
+                                    )
+                                )
+                            val favoriteGenres = user.favoriteGenres.map { it.genreSlug }
+
+                            if (favoriteGenres.isEmpty()) {
+                                bot.sendMessage(
+                                    chatId = ChatId.fromId(chatId),
+                                    text = "⚙️ У вас пока не выбрано ни одного жанра.\n" +
+                                            "Перейдите в *Настройку предпочтений*, чтобы выбрать любимые жанры.",
+                                    parseMode = ParseMode.MARKDOWN
+                                )
+                                return@text
+                            }
+                            bot.sendMessage(
+                                chatId = ChatId.fromId(chatId),
+                                text = "⏰ Одну минуту, собираем подборку по вашим предпочтениям"
+                            )
+                            val movies = kpService.getMoviesByGenres(favoriteGenres)
+                            if (movies.isEmpty()) {
+                                bot.sendMessage(
+                                    chatId = ChatId.fromId(chatId),
+                                    text = "😢 Не удалось найти фильмы по вашим предпочтениям."
+                                )
+                                return@text
+                            }
+
+                            val moviesToShow = movies.take(5)
+                            val messageText = moviesToShow.joinToString("\n\n") { movie ->
+                                createTitle(movie)
+                            }
+
+                            val keyboard = createFavKeyboard(moviesToShow)
+
+                            println("Отправляю сообщение:\n$messageText")
+                            bot.sendMessage(
+                                chatId = ChatId.fromId(chatId),
+                                text = "🎨 Подборка фильмов по вашим предпочтениям:\n\n$messageText",
+                                parseMode = ParseMode.MARKDOWN,
+                                replyMarkup = keyboard
+                            )
+                            return@text
+                        }
+
                         text == "🎲 Случайный фильм" -> {
                             val movie = kpService.getRandomMovie()
                             if (movie != null) {
@@ -264,12 +303,12 @@ class MovieMateBot(
                                     chatId = ChatId.fromId(chatId),
                                     photo = TelegramFile.ByUrl(posterUrl),
                                     caption = """
-                                    🎬 "$title" (${yearText})
-                                    ⭐ Кинопоиск: ${movie.rating?.kp ?: "—"}
-                                    ⭐ IMDb: ${movie.rating?.imdb ?: "—"}
-                                    🎭 Жанры: $genresText
-                                         
-                                    ${movie.description ?: "Описание отсутствует"}
+                                🎬 "$title" (${yearText})
+                                ⭐ Кинопоиск: ${movie.rating?.kp ?: "—"}
+                                ⭐ IMDb: ${movie.rating?.imdb ?: "—"}
+                                🎭 Жанры: $genresText
+                                     
+                                ${movie.description ?: "Описание отсутствует"}
                                      """.trimIndent(),
                                     replyMarkup = InlineKeyboardMarkup.create(
                                         listOf(
@@ -289,9 +328,74 @@ class MovieMateBot(
                             } else {
                                 bot.sendMessage(
                                     chatId = ChatId.fromId(chatId),
-                                    text = "Не удалось получить случайный фильм. Попробуй снова."
+                                    text = "Не удалось получить случайный фильм. Попробуйте снова."
                                 )
                             }
+                            return@text
+                        }
+
+                        text == "👤 Профиль" -> {
+                            val user = userRepository.findByTelegramId(telegramUser.id)
+                                ?: userRepository.save(
+                                    User(
+                                        telegramId = telegramUser.id,
+                                        username = telegramUser.username,
+                                        firstName = telegramUser.firstName,
+                                        lastName = telegramUser.lastName
+                                    )
+                                )
+
+                            val name = buildString {
+                                append(user.firstName ?: "")
+                                if (!user.lastName.isNullOrBlank()) append(" ${user.lastName}")
+                            }.ifBlank { "Без имени" }
+
+                            val username = user.username?.let { "@$it" } ?: "—"
+
+                            val genresText = if (user.favoriteGenres.isNotEmpty()) {
+                                user.favoriteGenres.joinToString(", ") { it.genreName }
+                            } else {
+                                "Не выбраны 🎭"
+                            }
+
+                            val favoritesText = if (user.favorites.isNotEmpty()) {
+                                user.favorites.joinToString("\n") { "• ${it.title}" }
+                            } else {
+                                "Пока пусто ❤️"
+                            }
+
+                            val profileText = """
+                                👤 *Профиль пользователя*
+                                
+                                📛 Имя: *$name*
+                                💬 Username: *$username*
+                                
+                                🎭 Любимые жанры:
+                                $genresText
+                                
+                                ❤️ Избранные фильмы:
+                                $favoritesText
+                            """.trimIndent()
+
+                            bot.sendMessage(
+                                chatId = ChatId.fromId(chatId),
+                                text = profileText,
+                                parseMode = ParseMode.MARKDOWN,
+                                replyMarkup = InlineKeyboardMarkup.create(
+                                    listOf(
+                                        listOf(
+                                            InlineKeyboardButton.CallbackData(
+                                                text = "⚙️ Настроить предпочтения",
+                                                callbackData = "open_genres"
+                                            ),
+                                            InlineKeyboardButton.CallbackData(
+                                                text = "🗑 Очистить избранное",
+                                                callbackData = "clear_favorites"
+                                            )
+                                        )
+                                    )
+                                )
+                            )
                             return@text
                         }
                         text == "❓ Помощь" -> {
@@ -316,12 +420,13 @@ class MovieMateBot(
                             )
                             return@text
                         }
+
                         else -> {
                             bot.sendMessage(
                                 chatId = ChatId.fromId(chatId),
-                                text = "\uD83C\uDFAC Я - твой персональный киноконсультант! \uD83C\uDFAC\n" +
+                                text = "\uD83C\uDFAC Я - ваш персональный киноконсультант! \uD83C\uDFAC\n" +
                                         "\n" +
-                                        "Я ищу фильмы из множества источников чтобы найти именно то, что тебе понравится!\n" +
+                                        "Я ищу фильмы из множества источников чтобы найти именно то, что вам понравится!\n" +
                                         "\n" +
                                         "\uD83D\uDCCB Выбери действие из меню, чтобы продолжить:",
                                 replyMarkup = buildMainMenu()
