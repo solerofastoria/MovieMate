@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/moviemate
+    username: postgres
+    password: 123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+tmdb:
+  api:
+    token: eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2NGU4ZTc5MTI5NWQ1NjU1ZDMwNDE3Y2EzM2ZhODQ4MiIsIm5iZiI6MTc2MTU2NzM2NC4yOTc5OTk5LCJzdWIiOiI2OGZmNjI4NDk5NmE1ZjcyZjNlYWI0MDEiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.W2lXt7fDjS3vbcyMIBjOimGUB8idnzqJxzouddbBulQ
+  base-url: https://api.themoviedb.org/3
+kinopoisk:
+  api:
+    token: 3YECYWF-3NY4VGW-JMNVHH1-DEVY8RT
+telegram:
+  bot:
+    token: 8019873191:AAFfGayI9lO6wRhUVgDNQLew7WKEKB6aqTA
+    username: FilmsMateBot
